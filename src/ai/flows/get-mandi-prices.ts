@@ -31,14 +31,16 @@ export const GetMandiPricesOutputSchema = z.object({
 export type GetMandiPricesOutput = z.infer<typeof GetMandiPricesOutputSchema>;
 
 
-// Mock data for the tool
+// Mock data for the tool, updated to include Bhindi, Rice, etc.
 const mockMandiData = [
-  { commodity: "Paddy (Common)", market: "Nalbari", price: 2183, historical: [2150, 2165, 2180], sentiment: "positive", weather: "favorable" },
-  { commodity: "Jute", market: "Dhubri", price: 5050, historical: [5100, 5080, 5060], sentiment: "negative", weather: "normal" },
-  { commodity: "Potato", market: "Guwahati", price: 1800, historical: [1750, 1780, 1820], sentiment: "positive", weather: "risk of heavy rain" },
-  { commodity: "Mustard", market: "Barpeta Road", price: 5400, historical: [5400, 5410, 5405], sentiment: "neutral", weather: "normal" },
-  { commodity: "Assam Lemon", market: "Tinsukia", price: 3500, historical: [3300, 3400, 3450], sentiment: "very positive", weather: "favorable" },
-  { commodity: "Black Gram (Matikalai)", market: "Nagaon", price: 7800, historical: [7900, 7850, 7820], sentiment: "negative", weather: "normal" },
+  { commodity: "Rice (Joha)", market: "Sivasagar", price: 7000, historical: [6900, 6950, 7020], sentiment: "positive", weather: "favorable" },
+  { commodity: "Bhindi (Okra)", market: "Guwahati", price: 2500, historical: [2600, 2550, 2520], sentiment: "negative", weather: "risk of heavy rain" },
+  { commodity: "Potato", market: "Guwahati", price: 1850, historical: [1800, 1820, 1860], sentiment: "positive", weather: "normal" },
+  { commodity: "Tomato", market: "Nalbari", price: 2200, historical: [2100, 2150, 2250], sentiment: "very positive", weather: "favorable" },
+  { commodity: "Mustard", market: "Barpeta Road", price: 5450, historical: [5400, 5410, 5420], sentiment: "neutral", weather: "normal" },
+  { commodity: "Jute", market: "Dhubri", price: 5000, historical: [5100, 5050, 5020], sentiment: "negative", weather: "normal" },
+  { commodity: "Assam Lemon", market: "Tinsukia", price: 3600, historical: [3500, 3550, 3580], sentiment: "positive", weather: "favorable" },
+  { commodity: "Cauliflower", market: "Jorhat", price: 1500, historical: [1600, 1550, 1480], sentiment: "negative", weather: "unseasonal rain" },
 ];
 
 
@@ -88,7 +90,7 @@ const prompt = ai.definePrompt({
   4. Provide a brief, one-sentence justification for your prediction.
   5. Determine if the trend is 'up', 'down', or 'stable'.
   
-  Format the current and predicted prices as a string with a currency symbol, like '₹2,183'.
+  Format the current and predicted prices as a string with a currency symbol, like '₹2,183'. Prices are per quintal unless specified otherwise.
 
   Provide the final output strictly following the GetMandiPricesOutput schema.`,
 });
