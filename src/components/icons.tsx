@@ -1,13 +1,23 @@
 import { cn } from "@/lib/utils";
-import { Leaf } from "lucide-react";
+import Image from "next/image";
 
-export function Logo(props: React.SVGProps<SVGSVGElement>) {
+export function Logo(props: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div className={cn("flex items-center gap-2", props.className)}>
-      <Leaf className="h-6 w-6 text-primary" />
-      <h1 className="text-xl font-bold font-headline text-primary-foreground group-data-[collapsible=icon]:hidden">
-        Krishione
-      </h1>
+      <Image 
+        src="https://firebasestudio.ai/krishi-ek-logo.png" 
+        alt="Krishi Ek Logo" 
+        width={120} 
+        height={40} 
+        className="group-data-[collapsible=icon]:hidden"
+      />
+       <Image 
+        src="https://firebasestudio.ai/krishi-ek-icon.png" 
+        alt="Krishi Ek Icon" 
+        width={32} 
+        height={32} 
+        className="hidden group-data-[collapsible=icon]:block"
+      />
     </div>
   );
 }

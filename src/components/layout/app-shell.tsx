@@ -15,7 +15,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <Sidebar>
-        <SidebarHeader>
+        <SidebarHeader className="h-16 flex items-center">
           <Logo />
         </SidebarHeader>
         <SidebarContent>
