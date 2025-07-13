@@ -34,15 +34,19 @@ export default function AskPage() {
   const [result, setResult] = useState<string | null>(null);
 
   const [isRecording, setIsRecording] = useState(false);
-  const [isSpeechRecognitionSupported, setIsSpeechRecognitionSupported] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
+  // Check for browser support once on component mount
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      setIsSpeechRecognitionSupported(true);
+    if (!SpeechRecognition) {
+      toast({
+        variant: "destructive",
+        title: "Unsupported Browser",
+        description: "Your browser does not support speech recognition.",
+      });
     }
-  }, []);
+  }, [toast]);
 
   const submitQuery = (currentQuery: string) => {
     if (!currentQuery) {
@@ -70,13 +74,9 @@ export default function AskPage() {
   }
 
   const handleMicClick = () => {
-    if (!isSpeechRecognitionSupported) {
-      toast({
-        variant: "destructive",
-        title: "Unsupported Browser",
-        description: "Your browser does not support speech recognition.",
-      });
-      return;
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      return; // Error toast already shown in useEffect
     }
 
     if (isRecording) {
@@ -84,40 +84,34 @@ export default function AskPage() {
       setIsRecording(false);
       return;
     }
-  
-    // Stop any existing recognition instance
-    if (recognitionRef.current) {
-        recognitionRef.current.onresult = null;
-        recognitionRef.current.onend = null;
-        recognitionRef.current.onerror = null;
-        recognitionRef.current.stop();
-    }
-
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    
+    // Create a new recognition instance for each recording
     const recognition = new SpeechRecognition();
-    recognitionRef.current = recognition;
-  
-    recognition.lang = languageMap[language] || "en-US";
+    recognition.lang = languageMap[language];
     recognition.continuous = false;
     recognition.interimResults = false;
-  
+    
+    recognitionRef.current = recognition;
+
     recognition.onstart = () => {
       setIsRecording(true);
-      setQuery("");
-      setResult(null);
+      setQuery(""); // Clear previous query
+      setResult(null); // Clear previous result
     };
   
     recognition.onend = () => {
       setIsRecording(false);
+      recognitionRef.current = null; // Clean up ref
     };
   
     recognition.onerror = (event) => {
-      console.error("Speech Recognition Error:", event.error);
       let description = `An error occurred: ${event.error}`;
       if (event.error === 'no-speech') {
         description = "No speech was detected. Please try again.";
       } else if (event.error === 'not-allowed') {
         description = "Microphone access was denied. Please allow microphone access in your browser settings.";
+      } else if (event.error === 'language-not-supported') {
+        description = `The selected language (${language}) is not supported by your browser's speech recognition.`;
       }
       toast({
         variant: "destructive",
@@ -130,20 +124,11 @@ export default function AskPage() {
     recognition.onresult = (event) => {
       const transcript = event.results[0][0].transcript;
       setQuery(transcript);
+      // Automatically submit the query after successful transcription
       submitQuery(transcript);
     };
   
-    try {
-      recognition.start();
-    } catch (e) {
-      console.error("Could not start recognition:", e);
-      toast({
-        variant: "destructive",
-        title: "Recognition Error",
-        description: "Could not start speech recognition. Please check your microphone permissions.",
-      });
-      setIsRecording(false);
-    }
+    recognition.start();
   };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -194,8 +179,8 @@ export default function AskPage() {
                   variant={isRecording ? "destructive" : "default"}
                   className="absolute bottom-2 right-2 rounded-full"
                   onClick={handleMicClick}
-                  disabled={!isSpeechRecognitionSupported || isPending}
-                  title={isSpeechRecognitionSupported ? "Record Voice" : "Speech recognition not supported"}
+                  disabled={isPending}
+                  title="Record Voice"
                 >
                   <Mic className="h-4 w-4" />
                   <span className="sr-only">Record Voice</span>
@@ -203,7 +188,7 @@ export default function AskPage() {
               </div>
             </div>
             <Button type="submit" className="w-full" disabled={isPending}>
-              {isPending ? (
+              {isPending && !result ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Getting Advice...
