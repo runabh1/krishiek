@@ -14,8 +14,8 @@ import { z } from 'genkit';
 const CommodityPriceSchema = z.object({
     commodity: z.string().describe("The name of the commodity (e.g., 'Paddy (Common)')."),
     market: z.string().describe("The market where the commodity is traded."),
-    price: z.string().describe("The current price per quintal (e.g., '₹2,183')."),
-    prediction: z.string().describe("The predicted price for the next week (e.g., '₹2,210')."),
+    price: z.string().describe("The current price per quintal formatted as a string with the Rupee symbol (e.g., '₹2,183')."),
+    prediction: z.string().describe("The predicted price for the next week, formatted as a string with the Rupee symbol (e.g., '₹2,210')."),
     justification: z.string().describe("A brief justification for the prediction, citing factors like weather or demand."),
     trend: z.enum(["up", "down", "stable"]).describe("The predicted price trend."),
 });
@@ -90,7 +90,7 @@ const prompt = ai.definePrompt({
   4. Provide a brief, one-sentence justification for your prediction.
   5. Determine if the trend is 'up', 'down', or 'stable'.
   
-  Format the current and predicted prices as a string with a currency symbol, like '₹2,183'. Prices are per quintal unless specified otherwise.
+  IMPORTANT: You MUST format the 'price' and 'prediction' fields as strings with a Rupee currency symbol, like '₹2,183'. Prices are per quintal unless specified otherwise.
 
   Provide the final output strictly following the GetMandiPricesOutput schema.`,
 });
