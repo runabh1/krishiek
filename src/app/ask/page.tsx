@@ -85,7 +85,7 @@ export default function AskPage() {
       return;
     }
     
-    // Create a new recognition instance for each recording
+    // Create a new recognition instance for each recording to ensure language is set correctly
     const recognition = new SpeechRecognition();
     recognition.lang = languageMap[language];
     recognition.continuous = false;
