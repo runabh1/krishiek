@@ -9,6 +9,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { format, addDays } from 'date-fns';
 
 const GetWeatherAlertsInputSchema = z.object({
   location: z.string().describe('The location for which to get weather alerts.'),
@@ -24,7 +25,7 @@ const DailyForecastSchema = z.object({
 
 const GetWeatherAlertsOutputSchema = z.object({
   alerts: z.array(z.object({
-    icon: z.enum(["CloudDrizzle", "CloudLightning", "CircleDollarSign", "Sun", "Wind", "Cloudy"]).describe("An icon name representing the alert type."),
+    icon: z.enum(["CloudDrizzle", "CloudLightning", "CircleDollarSign", "Sun", "Wind", "Cloudy", "Bug"]).describe("An icon name representing the alert type."),
     title: z.string().describe("The title of the alert."),
     description: z.string().describe("The description of the alert in a local language and English."),
     time: z.string().describe("How long ago the alert was issued (e.g., '2 hours ago')."),
@@ -33,6 +34,42 @@ const GetWeatherAlertsOutputSchema = z.object({
   forecast: z.array(DailyForecastSchema).describe("A 5-day weather forecast."),
 });
 export type GetWeatherAlertsOutput = z.infer<typeof GetWeatherAlertsOutputSchema>;
+
+const mockAlerts = [
+    {
+        title: "Pest Outbreak: Rice Stem Borer",
+        description: "कीटों का प्रकोप: आपके क्षेत्र में धान के तना छेदक का खतरा बढ़ गया है। (Pest Outbreak: Rice stem borer threat has increased in your area.)",
+    },
+    {
+        title: "Subsidy Deadline: PM-Kisan",
+        description: "PM-Kisan: eKYC জমা দিয়াৰ অন্তিম তাৰিখ ৩১ জুলাই। (PM-Kisan: Last date to submit eKYC is 31st July.)",
+    },
+    {
+        title: "Heavy Rainfall Warning",
+        description: "প্রবল বর্ষণের সতর্কতা: আগামী ২৪ ঘণ্টাত আপোনাৰ অঞ্চলত প্রবল বর্ষণ হোৱাৰ সম্ভাৱনা আছে। (Heavy Rainfall Warning: Heavy rainfall is expected in your area in the next 24 hours.)",
+    },
+    {
+        title: "Kisan Credit Card Camp",
+        description: "किसान क्रेडिट कार्ड शिविर: আপনার স্থানীয় কৃষি অফিসে একটি বিশেষ শিবিরের আয়োজন করা হয়েছে। (Kisan Credit Card Camp: A special camp has been organized at your local agriculture office.)",
+    },
+    {
+        title: "High Winds Advisory",
+        description: "তেজ বতাহৰ পৰামৰ্শ: আজ আবেলি तेज বতাহ বলাৰ সম্ভাৱনা আছে, সাৱধান হওক। (High Winds Advisory: Strong winds are expected this afternoon, be careful.)",
+    },
+    {
+        title: "Heatwave Alert",
+        description: "গরমের लहर की चेतावनी: আগামী ৪৮ ঘণ্টা পর্যন্ত তাপপ্রবাহের সতর্কতা জারি করা হয়েছে। (Heatwave Alert: A heatwave warning has been issued for the next 48 hours.)"
+    }
+];
+
+const mockForecastConditions = [
+    { condition: "Light Rain", description: "পাতল বৰষুণৰ সম্ভাৱনা আছে। (Light rain expected.)" },
+    { condition: "Thunderstorm", description: "বজ্ৰপাতৰ সৈতে ধুমুহা আহিব পাৰে। (Thunderstorms expected.)" },
+    { condition: "Sunny", description: "বতৰ ফৰকাল থাকিব। (The weather will be clear.)" },
+    { condition: "Cloudy", description: "ডাৱৰীয়া বতৰ থাকিব। (It will be cloudy.)" },
+    { condition: "Windy", description: "বতাহ বলি থাকিব। (It will be windy.)" },
+    { condition: "Partly Cloudy", description: "আংশিকভাৱে ডাৱৰীয়া বতৰ। (Partly cloudy weather.)" },
+];
 
 const getCurrentWeatherTool = ai.defineTool({
     name: 'getCurrentWeather',
@@ -52,28 +89,29 @@ const getCurrentWeatherTool = ai.defineTool({
     }),
 }, async ({ location }) => {
     // In a real app, this would call a weather API.
-    // Here, we'll return mock data.
-    return {
-        alerts: [
-            {
-                title: "Pest Outbreak Warning",
-                description: "कीटों का प्रकोप: आपके क्षेत्र में धान के तना छेदक का खतरा बढ़ गया है। (Pest Outbreak: Rice stem borer threat has increased in your area.)",
-                time: "1 day ago",
-            },
-            {
-                title: "Subsidy Deadline",
-                description: "PM-Kisan: eKYC জমা দিয়াৰ অন্তিম তাৰিখ ৩১ জুলাই। (PM-Kisan: Last date to submit eKYC is 31st July.)",
-                time: "3 days ago",
-            },
-        ],
-        forecast: [
-            { day: "Today", condition: "Light Rain", description: "আজি গুৱাহাটীত পাতল বৰষুণৰ সম্ভাৱনা আছে। (Light rain expected in Guwahati today.)" },
-            { day: "Tomorrow", condition: "Thunderstorm", description: "কালি বজ্ৰপাতৰ সৈতে ধুমুহা আহিব পাৰে। (Thunderstorms expected tomorrow.)" },
-            { day: "Wednesday", condition: "Sunny", description: "বুধবাৰে বতৰ ফৰকাল থাকিব। (The weather will be clear on Wednesday.)" },
-            { day: "Thursday", condition: "Cloudy", description: "বৃহস্পতিবাৰে ডাৱৰীয়া বতৰ থাকিব। (It will be cloudy on Thursday.)" },
-            { day: "Friday", condition: "Windy", description: "শুকুৰবাৰে বতাহ বলি থাকিব। (It will be windy on Friday.)" },
-        ]
-    };
+    // Here, we'll return dynamic mock data.
+
+    // Generate random alerts
+    const shuffledAlerts = [...mockAlerts].sort(() => 0.5 - Math.random());
+    const selectedAlerts = shuffledAlerts.slice(0, Math.floor(Math.random() * 3) + 2); // 2 to 4 alerts
+    const alerts = selectedAlerts.map(alert => ({
+        ...alert,
+        time: `${Math.floor(Math.random() * 24) + 1} hours ago`,
+    }));
+
+    // Generate 5-day forecast starting from today
+    const forecast = Array.from({ length: 5 }).map((_, i) => {
+        const date = addDays(new Date(), i);
+        const dayName = i === 0 ? "Today" : i === 1 ? "Tomorrow" : format(date, 'EEEE');
+        const randomCondition = mockForecastConditions[Math.floor(Math.random() * mockForecastConditions.length)];
+        return {
+            day: dayName,
+            condition: randomCondition.condition,
+            description: `${dayName} গুৱাহাটীত ${randomCondition.description}`,
+        };
+    });
+
+    return { alerts, forecast };
 });
 
 
@@ -86,19 +124,29 @@ const prompt = ai.definePrompt({
   input: {schema: GetWeatherAlertsInputSchema},
   output: {schema: GetWeatherAlertsOutputSchema},
   tools: [getCurrentWeatherTool],
-  prompt: `You are a helpful assistant for farmers. Get the weather alerts and a 5-day forecast for the specified location using the available tool.
+  prompt: `You are a helpful assistant for farmers in Assam, India. Your primary language for communication should be Assamese, but include English translations.
+
+Get the weather alerts and a 5-day forecast for the specified location using the available tool.
 
 Location: {{{location}}}
 
-Based on the weather data, determine the appropriate icon and Tailwind CSS color for each alert.
-- For rain or drizzle, use "CloudDrizzle" and "text-blue-500".
-- For thunderstorms or lightning, use "CloudLightning" and "text-yellow-600".
-- For subsidy or financial news, use "CircleDollarSign" and "text-green-600".
-- For sunny weather, use "Sun".
-- For windy weather, use "Wind".
-- For cloudy weather, use "Cloudy".
+Based on the weather data and alert titles, determine the appropriate icon and Tailwind CSS color for each alert.
+- For rain or drizzle, use icon "CloudDrizzle" and color "text-blue-500".
+- For thunderstorms or lightning, use icon "CloudLightning" and color "text-yellow-600".
+- For subsidy, financial news, or government camps, use icon "CircleDollarSign" and color "text-green-600".
+- For sunny or heatwave alerts, use icon "Sun" and color "text-orange-500".
+- For windy weather, use icon "Wind" and color "text-gray-500".
+- For pest-related alerts, use icon "Bug" and color "text-red-600".
+- For other general alerts, use "Cloudy".
 
-Format the output according to the GetWeatherAlertsOutput schema.
+For the forecast, determine the appropriate icon for each day's condition:
+- "Light Rain" or "Partly Cloudy" -> "CloudDrizzle"
+- "Thunderstorm" -> "CloudLightning"
+- "Sunny" -> "Sun"
+- "Cloudy" -> "Cloudy"
+- "Windy" -> "Wind"
+
+Format the output according to the GetWeatherAlertsOutput schema. The 'title' for the forecast should be the condition (e.g., 'Light Rain').
 `,
 });
 

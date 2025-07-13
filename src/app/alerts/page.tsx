@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CloudDrizzle, CloudLightning, CircleDollarSign, Sun, Wind, Cloudy, Bell, Loader2 } from "lucide-react";
+import { CloudDrizzle, CloudLightning, CircleDollarSign, Sun, Wind, Cloudy, Bell, Loader2, Bug } from "lucide-react";
 import { getWeatherAlertsAction } from "./actions";
 import type { GetWeatherAlertsOutput } from "@/ai/flows/get-weather-alerts";
 import { useToast } from "@/hooks/use-toast";
@@ -16,6 +16,7 @@ const iconMap = {
   Wind: Wind,
   Cloudy: Cloudy,
   Bell: Bell,
+  Bug: Bug,
 };
 
 type IconName = keyof typeof iconMap;
@@ -84,7 +85,7 @@ export default function AlertsPage() {
                     const Icon = iconMap[alert.icon as IconName] || Bell;
                     return(
                       <div key={index} className="flex items-start gap-4">
-                          <div className={`mt-1 h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-full bg-muted ${alert.color}`}>
+                          <div className={`mt-1 h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-full ${alert.color.replace('text-', 'bg-')}`}>
                             <Icon className="h-5 w-5 text-white" />
                           </div>
                           <div className="flex-1">
