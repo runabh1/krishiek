@@ -40,19 +40,18 @@ const getAdviceFromAudioFlow = ai.defineFlow(
   },
   async (input) => {
     
-    // Perform transcription and advice generation in a single, more efficient call.
     const { output } = await ai.generate({
         prompt: [
             { text: `You are an agricultural expert providing crop advice to farmers in India.` },
-            { text: `First, transcribe the user's audio query which is in ${input.language}.` },
-            { text: `Then, based on the transcription, provide a clear, actionable answer in ${input.language}.` },
-            { text: `For example, if the query is about pests in a paddy field, your response should be in ${input.language} with concrete steps.` },
+            { text: `The user's query is in ${input.language}. First, transcribe the attached audio. Second, based on the transcription, provide a clear, actionable answer in ${input.language}.` },
+            { text: `Return a single JSON object with two keys: "transcript" containing the exact text you heard, and "advice" containing your expert reply.`},
             { media: { url: input.audioDataUri } }
         ],
         output: {
             schema: GetAdviceFromAudioOutputSchema,
             format: 'json'
-        }
+        },
+        model: 'googleai/gemini-1.5-flash-latest' // Explicitly use the flash model here too
     });
 
     if (!output) {
