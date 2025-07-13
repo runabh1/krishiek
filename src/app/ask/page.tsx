@@ -39,7 +39,9 @@ export default function AskPage() {
 
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    setIsSpeechRecognitionSupported(!!SpeechRecognition);
+    if (SpeechRecognition) {
+      setIsSpeechRecognitionSupported(true);
+    }
   }, []);
 
   const submitQuery = (currentQuery: string) => {
@@ -76,13 +78,21 @@ export default function AskPage() {
       });
       return;
     }
-  
+
     if (isRecording) {
       recognitionRef.current?.stop();
       setIsRecording(false);
       return;
     }
   
+    // Stop any existing recognition instance
+    if (recognitionRef.current) {
+        recognitionRef.current.onresult = null;
+        recognitionRef.current.onend = null;
+        recognitionRef.current.onerror = null;
+        recognitionRef.current.stop();
+    }
+
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
     recognitionRef.current = recognition;
@@ -103,12 +113,16 @@ export default function AskPage() {
   
     recognition.onerror = (event) => {
       console.error("Speech Recognition Error:", event.error);
+      let description = `An error occurred: ${event.error}`;
+      if (event.error === 'no-speech') {
+        description = "No speech was detected. Please try again.";
+      } else if (event.error === 'not-allowed') {
+        description = "Microphone access was denied. Please allow microphone access in your browser settings.";
+      }
       toast({
         variant: "destructive",
         title: "Speech Recognition Error",
-        description: event.error === "no-speech" 
-          ? "No speech was detected. Please try again."
-          : `An error occurred: ${event.error}`,
+        description: description,
       });
       setIsRecording(false);
     };
@@ -128,6 +142,7 @@ export default function AskPage() {
         title: "Recognition Error",
         description: "Could not start speech recognition. Please check your microphone permissions.",
       });
+      setIsRecording(false);
     }
   };
 
