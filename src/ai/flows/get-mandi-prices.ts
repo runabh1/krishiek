@@ -19,17 +19,14 @@ const CommodityPriceSchema = z.object({
     justification: z.string().describe("A brief justification for the prediction, citing factors like weather or demand."),
     trend: z.enum(["up", "down", "stable"]).describe("The predicted price trend."),
 });
+export type GetMandiPricesOutput = {
+  prices: z.infer<typeof CommodityPriceSchema>[];
+}
 
 const GetMandiPricesInputSchema = z.object({
   location: z.string().describe("The general location or state, e.g., 'Assam'"),
 });
 export type GetMandiPricesInput = z.infer<typeof GetMandiPricesInputSchema>;
-
-const GetMandiPricesOutputSchema = z.object({
-  prices: z.array(CommodityPriceSchema),
-});
-export type GetMandiPricesOutput = z.infer<typeof GetMandiPricesOutputSchema>;
-
 
 // Mock data for the tool, updated to include Bhindi, Rice, etc.
 const mockMandiData = [
@@ -53,7 +50,7 @@ const getMarketDataTool = ai.defineTool(
       marketData: z.array(z.object({
         commodity: z.string(),
         market: z.string(),
-        currentPrice: z.number(),
+        currentPrice: z.number(), // Use number for raw data
         historicalPrices: z.array(z.number()).describe("Prices from the last 3 weeks."),
         marketSentiment: z.string().describe("News and social media sentiment."),
         weatherForecast: z.string().describe("Relevant weather forecast for the crop."),
@@ -76,34 +73,88 @@ const getMarketDataTool = ai.defineTool(
   }
 );
 
-const prompt = ai.definePrompt({
-  name: 'mandiPricePredictionPrompt',
-  input: { schema: GetMandiPricesInputSchema },
-  output: { schema: GetMandiPricesOutputSchema },
-  tools: [getMarketDataTool],
-  prompt: `You are an expert agricultural market analyst for the region of {{location}}.
-  Your task is to predict the mandi prices for the next week for a list of commodities.
 
-  1. Use the 'getMarketData' tool to fetch the latest market data for the specified location.
-  2. For each commodity in the returned data, analyze the historical prices, market sentiment, and weather forecast.
-  3. Based on your analysis, predict the price for the next week.
-  4. Provide a brief, one-sentence justification for your prediction.
-  5. Determine if the trend is 'up', 'down', or 'stable'.
-  
-  IMPORTANT: You MUST format the 'price' and 'prediction' fields as strings with a Rupee currency symbol, like '₹2,183'. Prices are per quintal unless specified otherwise.
+const pricePredictionPrompt = ai.definePrompt({
+    name: 'pricePredictionPrompt',
+    input: { schema: z.object({
+        commodity: z.string(),
+        market: z.string(),
+        currentPrice: z.number(),
+        historicalPrices: z.array(z.number()),
+        marketSentiment: z.string(),
+        weatherForecast: z.string(),
+    }) },
+    output: { schema: z.object({
+        prediction: z.number().describe("The predicted price for next week as a raw number."),
+        justification: z.string().describe("A brief, one-sentence justification for your prediction."),
+        trend: z.enum(["up", "down", "stable"]).describe("The predicted price trend."),
+    })},
+    prompt: `You are an expert agricultural market analyst.
+    
+    Given the data for "{{commodity}}" in the "{{market}}" market, predict next week's price.
+    - Current Price: {{currentPrice}}
+    - Historical Prices (last 3 weeks): {{historicalPrices}}
+    - Market Sentiment: {{marketSentiment}}
+    - Weather Forecast: {{weatherForecast}}
 
-  Provide the final output strictly following the GetMandiPricesOutput schema.`,
+    Analyze all factors and provide a numerical price prediction, a justification, and the trend.
+    `
 });
 
 const getMandiPricesFlow = ai.defineFlow(
   {
     name: 'getMandiPricesFlow',
     inputSchema: GetMandiPricesInputSchema,
-    outputSchema: GetMandiPricesOutputSchema,
+    outputSchema: z.any(), // We will manually construct the final object
   },
   async (input) => {
-    const { output } = await prompt(input);
-    return output!;
+    // 1. Fetch raw data using the tool
+    const { marketData } = await getMarketDataTool(input);
+
+    if (!marketData) {
+        throw new Error("Could not fetch market data.");
+    }
+
+    // 2. Iterate through each commodity and call the prediction prompt
+    const predictions = await Promise.all(
+        marketData.map(async (item) => {
+            const { output } = await pricePredictionPrompt(item);
+            if (!output) {
+                // Return a default or error state for this item
+                return {
+                    ...item,
+                    prediction: item.currentPrice,
+                    justification: "AI prediction failed, showing current price.",
+                    trend: "stable",
+                };
+            }
+            return {
+                ...item,
+                ...output
+            };
+        })
+    );
+    
+    // 3. Format the data into the final shape
+    const formatAsRupees = (value: number) => {
+        return new Intl.NumberFormat('en-IN', {
+            style: 'currency',
+            currency: 'INR',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        }).format(value).replace('₹', '₹');
+    }
+
+    const formattedPrices = predictions.map(p => ({
+        commodity: p.commodity,
+        market: p.market,
+        price: formatAsRupees(p.currentPrice),
+        prediction: formatAsRupees(p.prediction),
+        justification: p.justification,
+        trend: p.trend,
+    }));
+
+    return { prices: formattedPrices };
   }
 );
 
