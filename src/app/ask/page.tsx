@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useTransition, useEffect, useRef } from "react";
@@ -66,44 +67,43 @@ export default function AskPage() {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (SpeechRecognition) {
         setIsSpeechRecognitionSupported(true);
-        const recognition = new SpeechRecognition();
-        recognition.continuous = false;
-        recognition.interimResults = false;
-
-        recognition.onstart = () => {
-          setIsRecording(true);
-        };
-
-        recognition.onend = () => {
-          setIsRecording(false);
-        };
-
-        recognition.onerror = (event) => {
-          toast({
-            variant: "destructive",
-            title: "Speech Recognition Error",
-            description: event.error,
-          });
-        };
-
-        recognition.onresult = (event) => {
-          const transcript = event.results[0][0].transcript;
-          setQuery(transcript);
-          submitQuery(transcript);
-        };
-        
-        recognitionRef.current = recognition;
+        recognitionRef.current = new SpeechRecognition();
       } else {
         setIsSpeechRecognitionSupported(false);
       }
     }
-  }, [language]); // Rerun when language changes
+  }, []);
 
   useEffect(() => {
-    if (recognitionRef.current) {
-      recognitionRef.current.lang = languageMap[language] || "en-US";
-    }
-  }, [language]);
+    const recognition = recognitionRef.current;
+    if (!recognition) return;
+
+    recognition.lang = languageMap[language] || "en-US";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    recognition.onstart = () => setIsRecording(true);
+    recognition.onend = () => setIsRecording(false);
+    
+    recognition.onerror = (event) => {
+      console.error("Speech Recognition Error:", event.error);
+      toast({
+        variant: "destructive",
+        title: "Speech Recognition Error",
+        description: event.error === "no-speech" 
+          ? "No speech was detected. Please try again."
+          : event.error,
+      });
+      setIsRecording(false);
+    };
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      setQuery(transcript);
+      submitQuery(transcript);
+    };
+
+  }, [language, toast]);
 
 
   const handleMicClick = () => {
@@ -121,7 +121,16 @@ export default function AskPage() {
     } else {
       setQuery("");
       setResult(null);
-      recognitionRef.current?.start();
+      try {
+        recognitionRef.current?.start();
+      } catch (e) {
+        console.error("Could not start recognition:", e);
+        toast({
+          variant: "destructive",
+          title: "Recognition Error",
+          description: "Could not start speech recognition. Please check your microphone permissions.",
+        })
+      }
     }
   };
 
