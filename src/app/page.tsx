@@ -1,3 +1,4 @@
+
 "use client";
 
 import { BarChart, Bell, CircleDollarSign, CloudDrizzle, HeartPulse, LineChart, List, Sun, Thermometer } from "lucide-react";
@@ -101,7 +102,7 @@ export default function DashboardPage() {
             <LineChart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₹2,183/Quintal</div>
+            <div className="text-2xl font-bold">Rupees 2,183 / Quintal</div>
             <p className="text-xs text-muted-foreground">
               +1.2% from last week
             </p>
