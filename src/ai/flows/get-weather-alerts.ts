@@ -23,14 +23,16 @@ const DailyForecastSchema = z.object({
     description: z.string().describe("A brief description of the forecast in a local language and English."),
 });
 
-const GetWeatherAlertsOutputSchema = z.object({
-  alerts: z.array(z.object({
+const AlertSchema = z.object({
     icon: z.enum(["CloudDrizzle", "CloudLightning", "CircleDollarSign", "Sun", "Wind", "Cloudy", "Bug"]).describe("An icon name representing the alert type."),
     title: z.string().describe("The title of the alert."),
     description: z.string().describe("The description of the alert in a local language and English."),
     time: z.string().describe("How long ago the alert was issued (e.g., '2 hours ago')."),
     color: z.string().describe("A Tailwind CSS text color class (e.g., 'text-blue-500').")
-  })),
+});
+
+const GetWeatherAlertsOutputSchema = z.object({
+  alerts: z.array(AlertSchema),
   forecast: z.array(DailyForecastSchema).describe("A 5-day weather forecast."),
 });
 export type GetWeatherAlertsOutput = z.infer<typeof GetWeatherAlertsOutputSchema>;
@@ -138,38 +140,45 @@ export async function getWeatherAlerts(input: GetWeatherAlertsInput): Promise<Ge
   return getWeatherAlertsFlow(input);
 }
 
-const prompt = ai.definePrompt({
-  name: 'getWeatherAlertsPrompt',
-  input: {schema: GetWeatherAlertsInputSchema},
-  output: {schema: GetWeatherAlertsOutputSchema},
-  tools: [getCurrentWeatherTool, getCurrentSubsidiesTool],
-  prompt: `You are a helpful assistant for farmers in Assam, India. Your primary language for communication should be Assamese, but include English translations for clarity.
+const categorizeAlertsPrompt = ai.definePrompt({
+    name: 'categorizeAlertsPrompt',
+    input: { schema: z.object({
+        alerts: z.array(z.object({
+            title: z.string(),
+            description: z.string(),
+            time: z.string(),
+        })),
+        forecasts: z.array(z.object({
+            day: z.string(),
+            condition: z.string(),
+            description: z.string(),
+        })),
+    })},
+    output: { schema: GetWeatherAlertsOutputSchema },
+    prompt: `You are a helpful assistant for farmers. Your task is to categorize alerts and forecasts.
 
-1.  **Get Weather & Forecast**: Use the 'getCurrentWeather' tool for the specified location.
-2.  **Get Subsidies**: Use the 'getCurrentSubsidies' tool for the specified location.
-3.  **Process Subsidies**: For each subsidy, create a new alert. The title should be the subsidy name. For the description, create a concise summary that includes the subsidy's key details and a simple "How to Apply" section. The "How to Apply" section should suggest common application methods like visiting the local agriculture office or the official government portal.
-4.  **Combine Alerts**: Combine the weather alerts and the generated subsidy alerts into a single list.
-5.  **Categorize & Format**: For all alerts (weather and subsidy), determine the appropriate icon and Tailwind CSS color.
-    -   For rain or drizzle, use icon "CloudDrizzle" and color "text-blue-500".
-    -   For thunderstorms or lightning, use icon "CloudLightning" and color "text-yellow-600".
-    -   For subsidy, financial news, or government camps, use icon "CircleDollarSign" and color "text-green-600".
-    -   For sunny or heatwave alerts, use icon "Sun" and color "text-orange-500".
-    -   For windy weather, use icon "Wind" and color "text-gray-500".
-    -   For pest-related alerts, use icon "Bug" and color "text-red-600".
-    -   For other general alerts, use "Cloudy".
+- For each alert, determine the appropriate icon and Tailwind CSS color.
+  - Rain/drizzle: icon "CloudDrizzle", color "text-blue-500".
+  - Thunderstorm/lightning: icon "CloudLightning", color "text-yellow-600".
+  - Subsidy/financial news: icon "CircleDollarSign", color "text-green-600".
+  - Sunny/heatwave: icon "Sun", color "text-orange-500".
+  - Windy: icon "Wind", color "text-gray-500".
+  - Pest-related: icon "Bug", color "text-red-600".
+  - General/other: icon "Cloudy", color "text-gray-500".
 
-For the forecast, determine the appropriate icon for each day's condition:
-- "Light Rain" or "Partly Cloudy" -> "CloudDrizzle"
-- "Thunderstorm" -> "CloudLightning"
-- "Sunny" -> "Sun"
-- "Cloudy" -> "Cloudy"
-- "Windy" -> "Wind"
+- For each forecast, determine the appropriate icon based on the condition.
+  - "Light Rain" or "Partly Cloudy" -> "CloudDrizzle"
+  - "Thunderstorm" -> "CloudLightning"
+  - "Sunny" -> "Sun"
+  - "Cloudy" -> "Cloudy"
+  - "Windy" -> "Wind"
 
-Location: {{{location}}}
+- The 'title' for each forecast item should be its 'condition'.
 
-Format the final output according to the GetWeatherAlertsOutput schema. The 'title' for the forecast should be the condition (e.g., 'Light Rain').
+Format the final output according to the GetWeatherAlertsOutput schema.
 `,
 });
+
 
 const getWeatherAlertsFlow = ai.defineFlow(
   {
@@ -177,8 +186,34 @@ const getWeatherAlertsFlow = ai.defineFlow(
     inputSchema: GetWeatherAlertsInputSchema,
     outputSchema: GetWeatherAlertsOutputSchema,
   },
-  async input => {
-    const {output} = await prompt(input);
-    return output!;
+  async (input) => {
+    // 1. Call tools to get raw data
+    const weatherPromise = getCurrentWeatherTool(input);
+    const subsidiesPromise = getCurrentSubsidiesTool(input);
+    
+    const [weatherResult, subsidiesResult] = await Promise.all([weatherPromise, subsidiesPromise]);
+    
+    // 2. Process and combine data
+    const subsidyAlerts = subsidiesResult.subsidies.map(sub => ({
+        title: sub.name,
+        description: `${sub.details} To apply, visit your local agriculture office or the official government portal.`,
+        time: "Ongoing"
+    }));
+
+    const allAlerts = [...weatherResult.alerts, ...subsidyAlerts];
+
+    // 3. Call a simpler prompt for categorization
+    const { output } = await categorizeAlertsPrompt({
+        alerts: allAlerts,
+        forecasts: weatherResult.forecast
+    });
+
+    if (!output) {
+        throw new Error("Failed to categorize alerts and forecast.");
+    }
+    
+    return output;
   }
 );
+
+    
