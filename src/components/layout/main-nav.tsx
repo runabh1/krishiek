@@ -29,7 +29,7 @@ const links = [
   { href: "/mandi-prices", label: "Mandi Prices", icon: LineChart },
   { href: "/forms", label: "Voice Form Filler", icon: FileText },
   { href: "/marketplace", label: "Marketplace", icon: Store },
-  { href: "/alerts", label: "Weather Alerts", icon: Bell },
+  { href: "/alerts", label: "Alerts & Forecast", icon: Bell },
   { href: "/reports", label: "Generate Reports", icon: BarChart3 },
 ];
 
