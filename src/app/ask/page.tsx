@@ -21,7 +21,6 @@ export default function AskPage() {
   const [isPending, startTransition] = useTransition();
   const [language, setLanguage] = useState("Assamese");
   const [result, setResult] = useState<ResultState | null>(null);
-  const [query, setQuery] = useState(""); // For manual text input
 
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -36,12 +35,14 @@ export default function AskPage() {
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
       mediaRecorder.ondataavailable = (event) => {
-        audioChunksRef.current.push(event.data);
+        if (event.data.size > 0) {
+            audioChunksRef.current.push(event.data);
+        }
       };
 
       mediaRecorder.onstop = () => {
@@ -52,7 +53,6 @@ export default function AskPage() {
           const base64Audio = reader.result as string;
           submitAudioQuery(base64Audio);
         };
-        // Stop all tracks to release the microphone
         stream.getTracks().forEach(track => track.stop());
       };
 
@@ -62,9 +62,9 @@ export default function AskPage() {
 
     } catch (err) {
       console.error("Error accessing microphone:", err);
-      let description = "Could not access the microphone. Please check your browser permissions.";
+       let description = "Could not access the microphone. Please check your browser permissions.";
        if (err instanceof Error && err.name === 'NotAllowedError') {
-        description = "Microphone access was denied. Please allow microphone access in your browser settings.";
+        description = "Microphone access was denied. Please allow microphone access in your browser settings and try again.";
       }
       toast({
         variant: "destructive",
