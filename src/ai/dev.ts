@@ -9,3 +9,4 @@ import '@/ai/flows/get-cattle-advice.ts';
 import '@/ai/flows/get-weather-alerts.ts';
 import '@/ai/flows/diagnose-animal-disease.ts';
 import '@/ai/flows/get-mandi-prices.ts';
+import '@/ai/flows/get-advice-from-audio.ts';

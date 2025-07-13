@@ -2,140 +2,87 @@
 "use client";
 
 import { useState, useTransition, useEffect, useRef } from "react";
-import { Bot, Loader2, Mic, User } from "lucide-react";
+import { Bot, Loader2, Mic, User, Square } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { getCropAdviceAction } from "./actions";
+import { getAdviceFromAudioAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
-// Extend the Window interface for webkitSpeechRecognition
-declare global {
-  interface Window {
-    SpeechRecognition: typeof SpeechRecognition;
-    webkitSpeechRecognition: typeof SpeechRecognition;
-  }
+interface ResultState {
+  transcript: string;
+  advice: string;
 }
-
-const languageMap: { [key: string]: string } = {
-  Assamese: "as-IN",
-  Hindi: "hi-IN",
-  English: "en-US",
-};
 
 export default function AskPage() {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
-  const [query, setQuery] = useState("");
   const [language, setLanguage] = useState("Assamese");
-  const [result, setResult] = useState<string | null>(null);
+  const [result, setResult] = useState<ResultState | null>(null);
+  const [query, setQuery] = useState(""); // For manual text input
 
   const [isRecording, setIsRecording] = useState(false);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
-  // Check for browser support once on component mount
-  useEffect(() => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      toast({
-        variant: "destructive",
-        title: "Unsupported Browser",
-        description: "Your browser does not support speech recognition.",
-      });
-    }
-  }, [toast]);
-
-  const submitQuery = (currentQuery: string) => {
-    if (!currentQuery) {
-      toast({
-        variant: "destructive",
-        title: "Empty Query",
-        description: "Please enter or speak your question.",
-      });
-      return;
-    }
-
-    startTransition(async () => {
-      setResult(null);
-      const { advice, error } = await getCropAdviceAction({ voiceQuery: currentQuery, language });
-      if (error) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: error,
-        });
-      } else {
-        setResult(advice);
-      }
-    });
-  }
-
-  const handleMicClick = () => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      // Error toast already shown in useEffect, so we can just return.
-      return;
-    }
-
-    if (recognitionRef.current && isRecording) {
-      recognitionRef.current.stop();
+  const handleMicClick = async () => {
+    if (isRecording) {
+      mediaRecorderRef.current?.stop();
       setIsRecording(false);
-      recognitionRef.current = null;
       return;
     }
-    
-    // Always create a new instance to ensure the correct language is used.
-    const recognition = new SpeechRecognition();
-    recognition.lang = languageMap[language];
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    
-    recognitionRef.current = recognition;
 
-    recognition.onstart = () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        audioChunksRef.current.push(event.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const reader = new FileReader();
+        reader.readAsDataURL(audioBlob);
+        reader.onloadend = () => {
+          const base64Audio = reader.result as string;
+          submitAudioQuery(base64Audio);
+        };
+        // Stop all tracks to release the microphone
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.start();
       setIsRecording(true);
-      setQuery(""); // Clear previous query
-      setResult(null); // Clear previous result
-    };
-  
-    recognition.onend = () => {
-      setIsRecording(false);
-      recognitionRef.current = null; // Clean up ref
-    };
-  
-    recognition.onerror = (event) => {
-      let description = `An error occurred: ${event.error}`;
-      if (event.error === 'no-speech') {
-        description = "No speech was detected. Please try again.";
-      } else if (event.error === 'not-allowed') {
+      setResult(null);
+
+    } catch (err) {
+      console.error("Error accessing microphone:", err);
+      let description = "Could not access the microphone. Please check your browser permissions.";
+       if (err instanceof Error && err.name === 'NotAllowedError') {
         description = "Microphone access was denied. Please allow microphone access in your browser settings.";
-      } else if (event.error === 'language-not-supported') {
-        description = `The selected language (${language}) is not supported by your browser's speech recognition.`;
       }
       toast({
         variant: "destructive",
-        title: "Speech Recognition Error",
+        title: "Microphone Error",
         description: description,
       });
-      setIsRecording(false);
-    };
-  
-    recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript;
-      setQuery(transcript);
-      // Automatically submit the query after successful transcription
-      submitQuery(transcript);
-    };
-  
-    recognition.start();
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    submitQuery(query);
+  const submitAudioQuery = (audioDataUri: string) => {
+    startTransition(async () => {
+      const { transcript, advice, error } = await getAdviceFromAudioAction({ audioDataUri, language });
+      if (error) {
+        toast({ variant: "destructive", title: "Error", description: error });
+      } else if (transcript && advice) {
+        setResult({ transcript, advice });
+      }
+    });
   };
 
   return (
@@ -150,10 +97,10 @@ export default function AskPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="language">Select Language</Label>
-              <Select value={language} onValueChange={setLanguage} disabled={isRecording}>
+              <Select value={language} onValueChange={setLanguage} disabled={isRecording || isPending}>
                 <SelectTrigger id="language" className="w-[180px]">
                   <SelectValue placeholder="Language" />
                 </SelectTrigger>
@@ -164,64 +111,55 @@ export default function AskPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="query">Your Question</Label>
-              <div className="relative">
-                <Textarea
-                  id="query"
-                  placeholder="e.g., 'Mur dhan khetit pok lagiye, ki korim?' or click the mic to speak."
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  className="pr-20"
-                  rows={4}
-                />
+            
+            <div className="flex flex-col items-center justify-center space-y-4">
+                 <p className="text-muted-foreground text-sm">Click the button below and start speaking.</p>
                 <Button
                   type="button"
-                  size="icon"
-                  variant={isRecording ? "destructive" : "default"}
-                  className="absolute bottom-2 right-2 rounded-full"
+                  className={`w-24 h-24 rounded-full flex flex-col gap-2 transition-all duration-300 ${isRecording ? 'bg-red-600 hover:bg-red-700' : 'bg-primary hover:bg-primary/90'}`}
                   onClick={handleMicClick}
                   disabled={isPending}
-                  title={isRecording ? "Stop Recording" : "Record Voice"}
                 >
-                  <Mic className="h-4 w-4" />
-                  <span className="sr-only">{isRecording ? "Stop Recording" : "Record Voice"}</span>
+                    {isRecording ? <Square className="h-8 w-8"/> : <Mic className="h-8 w-8" />}
+                    <span className="text-sm font-semibold">{isRecording ? 'Stop' : 'Speak'}</span>
                 </Button>
-              </div>
+                {isRecording && <p className="text-sm text-primary animate-pulse">Listening...</p>}
             </div>
-            <Button type="submit" className="w-full" disabled={isPending}>
-              {isPending && !result ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Getting Advice...
-                </>
-              ) : (
-                "Get Advice"
-              )}
-            </Button>
-          </form>
 
-          {isPending && (
-             <div className="mt-6 flex flex-col items-center text-center">
-              <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
-              <p className="text-muted-foreground">AI is thinking...</p>
-            </div>
-          )}
+          </div>
 
-          {result && (
+          {(isPending || result) && (
             <div className="mt-8 pt-6 border-t">
-              <h3 className="text-lg font-semibold font-headline mb-4">AI Assistant's Advice</h3>
-              <div className="space-y-4">
-                 <div className="flex items-start gap-4">
-                    <Avatar className="w-8 h-8 border bg-primary text-primary-foreground">
-                        <AvatarFallback><Bot className="h-4 w-4"/></AvatarFallback>
-                    </Avatar>
-                    <div className="bg-primary/10 rounded-lg p-3 flex-1">
-                        <p className="font-semibold text-sm text-primary">KrishiGPT replied:</p>
-                        <p className="whitespace-pre-wrap">{result}</p>
+              {isPending && (
+                <div className="flex flex-col items-center text-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
+                  <p className="text-muted-foreground">AI is thinking...</p>
+                </div>
+              )}
+
+              {result && (
+                <div className="space-y-4">
+                    <h3 className="text-lg font-semibold font-headline mb-4">Conversation</h3>
+                    <div className="flex items-start gap-4">
+                        <Avatar className="w-8 h-8 border">
+                            <AvatarFallback><User className="h-4 w-4"/></AvatarFallback>
+                        </Avatar>
+                        <div className="bg-muted rounded-lg p-3 flex-1">
+                            <p className="font-semibold text-sm">You asked:</p>
+                            <p className="text-muted-foreground italic">"{result.transcript}"</p>
+                        </div>
                     </div>
-                 </div>
-              </div>
+                    <div className="flex items-start gap-4">
+                        <Avatar className="w-8 h-8 border bg-primary text-primary-foreground">
+                            <AvatarFallback><Bot className="h-4 w-4"/></AvatarFallback>
+                        </Avatar>
+                        <div className="bg-primary/10 rounded-lg p-3 flex-1">
+                            <p className="font-semibold text-sm text-primary">KrishiGPT replied:</p>
+                            <p className="whitespace-pre-wrap">{result.advice}</p>
+                        </div>
+                    </div>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
