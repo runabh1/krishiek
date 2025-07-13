@@ -1,11 +1,15 @@
 
 "use client";
 
-import { BarChart, Bell, CircleDollarSign, CloudDrizzle, HeartPulse, LineChart, List, Sun, Thermometer } from "lucide-react";
+import { useState } from "react";
+import { BarChart, Bell, CircleDollarSign, CloudDrizzle, HeartPulse, LineChart, List, Sun, Thermometer, PenSquare } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig } from "@/components/ui/chart";
 import { Bar, BarChart as RechartsBarChart, CartesianGrid, XAxis, YAxis, Pie, PieChart as RechartsPieChart, Cell } from "recharts";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { CowIcon } from "@/components/icons";
 
 const moodData = [
   { day: "Mon", level: 5 },
@@ -24,28 +28,42 @@ const moodChartConfig = {
   },
 } satisfies ChartConfig;
 
-
-const fertilityData = [
-  { name: 'Fertile', value: 12, fill: 'hsl(var(--primary))' },
-  { name: 'Not Fertile', value: 5, fill: 'hsl(var(--muted))' },
-]
-
 const fertilityChartConfig = {
   cows: {
     label: "Cows",
   },
   fertile: {
-    label: "Fertile",
+    label: "Pregnant",
     color: "hsl(var(--primary))",
   },
   "not-fertile": {
-    label: "Not Fertile",
+    label: "Not Pregnant",
     color: "hsl(var(--muted))",
   },
 } satisfies ChartConfig;
 
 
 export default function DashboardPage() {
+  const [totalCattle, setTotalCattle] = useState(17);
+  const [pregnantCattle, setPregnantCattle] = useState(12);
+
+  const handleTotalCattleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value, 10);
+    setTotalCattle(isNaN(value) ? 0 : value);
+  };
+
+  const handlePregnantCattleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value, 10);
+    setPregnantCattle(isNaN(value) ? 0 : value);
+  };
+
+  const nonPregnantCattle = totalCattle - pregnantCattle;
+
+  const fertilityData = [
+    { name: 'Pregnant', value: pregnantCattle, fill: 'hsl(var(--primary))' },
+    { name: 'Not Pregnant', value: nonPregnantCattle < 0 ? 0 : nonPregnantCattle, fill: 'hsl(var(--muted))' },
+  ]
+
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between space-y-2">
@@ -88,7 +106,7 @@ export default function DashboardPage() {
             <HeartPulse className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">17/17 Healthy</div>
+            <div className="text-2xl font-bold">{totalCattle}/{totalCattle} Healthy</div>
             <p className="text-xs text-muted-foreground">
               No new issues reported
             </p>
@@ -111,6 +129,23 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+        <Card className="col-span-4 lg:col-span-7">
+          <CardHeader>
+            <CardTitle className="font-headline flex items-center gap-2"><PenSquare />Farm Inputs</CardTitle>
+            <CardDescription>Update your farm data here to see real-time dashboard updates.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+                <Label htmlFor="total-cattle" className="flex items-center gap-2"><CowIcon className="h-4 w-4"/> Total Cattle</Label>
+                <Input id="total-cattle" type="number" value={totalCattle} onChange={handleTotalCattleChange} />
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="pregnant-cattle" className="flex items-center gap-2"><HeartPulse className="h-4 w-4"/> Pregnant Cattle</Label>
+                <Input id="pregnant-cattle" type="number" value={pregnantCattle} onChange={handlePregnantCattleChange} />
+            </div>
+          </CardContent>
+        </Card>
+
         <Card className="col-span-4">
           <CardHeader>
             <CardTitle className="font-headline">Mood & Stress Tracker</CardTitle>
@@ -200,7 +235,7 @@ export default function DashboardPage() {
                   strokeWidth={5}
                 >
                    {fertilityData.map((entry) => (
-                      <Cell key={entry.name} fill={entry.fill} />
+                      <Cell key={entry.name} fill={entry.fill} name={entry.name} />
                     ))}
                 </Pie>
               </RechartsPieChart>
