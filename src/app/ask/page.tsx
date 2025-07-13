@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect, useRef } from "react";
 import { Bot, Loader2, Mic, User } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,12 +11,91 @@ import { getCropAdviceAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
+// Extend the Window interface for webkitSpeechRecognition
+declare global {
+  interface Window {
+    SpeechRecognition: typeof SpeechRecognition;
+    webkitSpeechRecognition: typeof SpeechRecognition;
+  }
+}
+
+const languageMap: { [key: string]: string } = {
+  Assamese: "as-IN",
+  Hindi: "hi-IN",
+  English: "en-US",
+};
+
 export default function AskPage() {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [query, setQuery] = useState("");
   const [language, setLanguage] = useState("Assamese");
   const [result, setResult] = useState<string | null>(null);
+
+  const [isRecording, setIsRecording] = useState(false);
+  const [isSpeechRecognitionSupported, setIsSpeechRecognitionSupported] = useState(false);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        setIsSpeechRecognitionSupported(true);
+        const recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+
+        recognition.onstart = () => {
+          setIsRecording(true);
+        };
+
+        recognition.onend = () => {
+          setIsRecording(false);
+        };
+
+        recognition.onerror = (event) => {
+          toast({
+            variant: "destructive",
+            title: "Speech Recognition Error",
+            description: event.error,
+          });
+        };
+
+        recognition.onresult = (event) => {
+          const transcript = event.results[0][0].transcript;
+          setQuery(transcript);
+        };
+        
+        recognitionRef.current = recognition;
+      } else {
+        setIsSpeechRecognitionSupported(false);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (recognitionRef.current) {
+      recognitionRef.current.lang = languageMap[language] || "en-US";
+    }
+  }, [language]);
+
+
+  const handleMicClick = () => {
+    if (!isSpeechRecognitionSupported) {
+      toast({
+        variant: "destructive",
+        title: "Unsupported Browser",
+        description: "Your browser does not support speech recognition.",
+      });
+      return;
+    }
+
+    if (isRecording) {
+      recognitionRef.current?.stop();
+    } else {
+      recognitionRef.current?.start();
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -75,7 +154,7 @@ export default function AskPage() {
               <div className="relative">
                 <Textarea
                   id="query"
-                  placeholder="e.g., 'Mur dhan khetit pok lagiye, ki korim?'"
+                  placeholder="e.g., 'Mur dhan khetit pok lagiye, ki korim?' or click the mic to speak."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   className="pr-20"
@@ -84,7 +163,11 @@ export default function AskPage() {
                 <Button
                   type="button"
                   size="icon"
+                  variant={isRecording ? "destructive" : "default"}
                   className="absolute bottom-2 right-2 rounded-full"
+                  onClick={handleMicClick}
+                  disabled={!isSpeechRecognitionSupported || isPending}
+                  title={isSpeechRecognitionSupported ? "Record Voice" : "Speech recognition not supported"}
                 >
                   <Mic className="h-4 w-4" />
                   <span className="sr-only">Record Voice</span>
