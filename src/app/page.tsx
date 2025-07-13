@@ -1,3 +1,5 @@
+"use client";
+
 import { BarChart, Bell, CircleDollarSign, CloudDrizzle, HeartPulse, LineChart, List, Sun, Thermometer } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig } from "@/components/ui/chart";
