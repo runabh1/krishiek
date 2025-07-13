@@ -20,12 +20,12 @@ const CommodityPriceSchema = z.object({
     trend: z.enum(["up", "down", "stable"]).describe("The predicted price trend."),
 });
 
-export const GetMandiPricesInputSchema = z.object({
+const GetMandiPricesInputSchema = z.object({
   location: z.string().describe("The general location or state, e.g., 'Assam'"),
 });
 export type GetMandiPricesInput = z.infer<typeof GetMandiPricesInputSchema>;
 
-export const GetMandiPricesOutputSchema = z.object({
+const GetMandiPricesOutputSchema = z.object({
   prices: z.array(CommodityPriceSchema),
 });
 export type GetMandiPricesOutput = z.infer<typeof GetMandiPricesOutputSchema>;
