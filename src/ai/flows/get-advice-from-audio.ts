@@ -32,7 +32,6 @@ export async function getAdviceFromAudio(input: GetAdviceFromAudioInput): Promis
   return getAdviceFromAudioFlow(input);
 }
 
-
 const getAdviceFromAudioFlow = ai.defineFlow(
   {
     name: 'getAdviceFromAudioFlow',
@@ -41,38 +40,25 @@ const getAdviceFromAudioFlow = ai.defineFlow(
   },
   async (input) => {
     
-    // Step 1: Transcribe the audio
-    const { output: transcript } = await ai.generate({
+    // Perform transcription and advice generation in a single, more efficient call.
+    const { output } = await ai.generate({
         prompt: [
-            { text: `Transcribe the following audio from a farmer speaking in ${input.language}.` },
+            { text: `You are an agricultural expert providing crop advice to farmers in India.` },
+            { text: `First, transcribe the user's audio query which is in ${input.language}.` },
+            { text: `Then, based on the transcription, provide a clear, actionable answer in ${input.language}.` },
+            { text: `For example, if the query is about pests in a paddy field, your response should be in ${input.language} with concrete steps.` },
             { media: { url: input.audioDataUri } }
         ],
+        output: {
+            schema: GetAdviceFromAudioOutputSchema,
+            format: 'json'
+        }
     });
 
-    if (!transcript) {
-        throw new Error("Failed to transcribe audio.");
-    }
-
-    // Step 2: Use the transcript to get advice
-    const { output: advice } = await ai.generate({
-        prompt: `You are an agricultural expert providing crop advice to farmers in India.
-        A farmer has a question in their native language. Your task is to provide a clear, actionable answer in that same language.
-
-        Language for Response: ${input.language}
-        Farmer's Query: "${transcript}"
-
-        Analyze the query and provide specific advice. For example, if the query is "मेरे धान के खेत में कीट लग गए हैं, क्या करूँ?", your response should be in Hindi with concrete steps.
-        Return only the advice in the specified language.
-        `
-    });
-
-    if (!advice) {
-        throw new Error("Failed to generate advice from the transcript.");
+    if (!output) {
+        throw new Error("Failed to get advice from audio.");
     }
     
-    return {
-      transcript: transcript,
-      advice: advice,
-    };
+    return output;
   }
 );
