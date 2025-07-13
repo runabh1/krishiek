@@ -36,6 +36,31 @@ export default function AskPage() {
   const [isSpeechRecognitionSupported, setIsSpeechRecognitionSupported] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
+  const submitQuery = (currentQuery: string) => {
+    if (!currentQuery) {
+      toast({
+        variant: "destructive",
+        title: "Empty Query",
+        description: "Please enter or speak your question.",
+      });
+      return;
+    }
+
+    startTransition(async () => {
+      setResult(null);
+      const { advice, error } = await getCropAdviceAction({ voiceQuery: currentQuery, language });
+      if (error) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: error,
+        });
+      } else {
+        setResult(advice);
+      }
+    });
+  }
+
   useEffect(() => {
     if (typeof window !== "undefined") {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -64,6 +89,7 @@ export default function AskPage() {
         recognition.onresult = (event) => {
           const transcript = event.results[0][0].transcript;
           setQuery(transcript);
+          submitQuery(transcript);
         };
         
         recognitionRef.current = recognition;
@@ -71,7 +97,7 @@ export default function AskPage() {
         setIsSpeechRecognitionSupported(false);
       }
     }
-  }, []);
+  }, [language]); // Rerun when language changes
 
   useEffect(() => {
     if (recognitionRef.current) {
@@ -93,34 +119,15 @@ export default function AskPage() {
     if (isRecording) {
       recognitionRef.current?.stop();
     } else {
+      setQuery("");
+      setResult(null);
       recognitionRef.current?.start();
     }
   };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!query) {
-      toast({
-        variant: "destructive",
-        title: "Empty Query",
-        description: "Please enter your question.",
-      });
-      return;
-    }
-
-    startTransition(async () => {
-      setResult(null);
-      const { advice, error } = await getCropAdviceAction({ voiceQuery: query, language });
-      if (error) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: error,
-        });
-      } else {
-        setResult(advice);
-      }
-    });
+    submitQuery(query);
   };
 
   return (
@@ -197,15 +204,6 @@ export default function AskPage() {
             <div className="mt-8 pt-6 border-t">
               <h3 className="text-lg font-semibold font-headline mb-4">AI Assistant's Advice</h3>
               <div className="space-y-4">
-                 <div className="flex items-start gap-4">
-                    <Avatar className="w-8 h-8 border">
-                        <AvatarFallback><User className="h-4 w-4"/></AvatarFallback>
-                    </Avatar>
-                    <div className="bg-muted rounded-lg p-3">
-                        <p className="font-semibold text-sm">You asked:</p>
-                        <p className="text-muted-foreground">{query}</p>
-                    </div>
-                 </div>
                  <div className="flex items-start gap-4">
                     <Avatar className="w-8 h-8 border bg-primary text-primary-foreground">
                         <AvatarFallback><Bot className="h-4 w-4"/></AvatarFallback>
