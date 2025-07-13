@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Image from "next/image";
-import { BarChart, Bug, FlaskConical, Leaf, Loader2, NotebookText } from "lucide-react";
+import { BarChart, Bug, FlaskConical, Leaf, Loader2, NotebookText, Volume2 } from "lucide-react";
 
 import { diagnosePlantDiseaseAction } from "./actions";
 import type { DiagnosePlantDiseaseOutput } from "@/ai/flows/diagnose-plant-disease";
@@ -17,6 +17,32 @@ export default function DiagnosePage() {
   const [isPending, startTransition] = useTransition();
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [result, setResult] = useState<DiagnosePlantDiseaseOutput | null>(null);
+
+  const handleTextToSpeech = (text: string) => {
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      // You can configure the voice, rate, pitch etc. here if needed
+      // For example, find a Hindi voice:
+      const voices = window.speechSynthesis.getVoices();
+      const hindiVoice = voices.find(voice => voice.lang.startsWith('hi'));
+      if (hindiVoice) {
+        utterance.voice = hindiVoice;
+      }
+      utterance.rate = 0.9;
+      window.speechSynthesis.cancel(); // Cancel any previous speech
+      window.speechSynthesis.speak(utterance);
+       toast({
+        title: "Reading diagnosis aloud",
+        description: "Using browser's text-to-speech as a fallback.",
+      });
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Text-to-speech not supported",
+        description: "Your browser does not support the Web Speech API.",
+      });
+    }
+  };
 
   const handleImageUpload = (file: File) => {
     const reader = new FileReader();
@@ -111,13 +137,18 @@ export default function DiagnosePage() {
                             <p className="text-sm text-muted-foreground">{result.pesticideName}</p>
                         </div>
                       </div>
-                      {result.audioReplyUrl && (
-                        <div className="pt-2">
-                            <audio controls src={result.audioReplyUrl} className="w-full">
-                                Your browser does not support the audio element.
-                            </audio>
-                        </div>
-                      )}
+                      <div className="pt-2">
+                          {result.audioReplyUrl ? (
+                              <audio controls src={result.audioReplyUrl} className="w-full">
+                                  Your browser does not support the audio element.
+                              </audio>
+                          ) : (
+                            <Button onClick={() => handleTextToSpeech(result.textForSpeech)} variant="outline" className="w-full">
+                                <Volume2 className="mr-2 h-4 w-4" />
+                                Read Aloud (Fallback)
+                            </Button>
+                          )}
+                      </div>
                     </div>
                   )}
                 </div>
