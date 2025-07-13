@@ -1,32 +1,19 @@
-
 "use client";
 
-import { useState } from "react";
-import { BarChart, Bell, CircleDollarSign, CloudDrizzle, HeartPulse, LineChart, List, Sun, Thermometer, PenSquare } from "lucide-react";
+import { useEffect, useState, useTransition } from "react";
+import { Bell, CircleDollarSign, CloudDrizzle, HeartPulse, LineChart, List, Sun, Thermometer, PenSquare, Loader2, Bug, Newspaper } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig } from "@/components/ui/chart";
-import { Bar, BarChart as RechartsBarChart, CartesianGrid, XAxis, YAxis, Pie, PieChart as RechartsPieChart, Cell } from "recharts";
+import { Pie, PieChart as RechartsPieChart, Cell } from "recharts";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { CowIcon } from "@/components/icons";
-
-const moodData = [
-  { day: "Mon", level: 5 },
-  { day: "Tue", level: 6 },
-  { day: "Wed", level: 7 },
-  { day: "Thu", level: 6 },
-  { day: "Fri", level: 8 },
-  { day: "Sat", level: 9 },
-  { day: "Sun", level: 7 },
-];
-
-const moodChartConfig = {
-  level: {
-    label: "Stress Level",
-    color: "hsl(var(--primary))",
-  },
-} satisfies ChartConfig;
+import { getWeatherAlertsAction } from "./alerts/actions";
+import type { GetWeatherAlertsOutput } from "@/ai/flows/get-weather-alerts";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 const fertilityChartConfig = {
   cows: {
@@ -41,6 +28,81 @@ const fertilityChartConfig = {
     color: "hsl(var(--muted))",
   },
 } satisfies ChartConfig;
+
+const iconMap: { [key: string]: React.ElementType } = {
+  CloudDrizzle: CloudDrizzle,
+  CloudLightning: CloudDrizzle, // Using same for now
+  CircleDollarSign: CircleDollarSign,
+  Sun: Sun,
+  Wind: Sun, // Using same for now
+  Cloudy: CloudDrizzle, // Using same for now
+  Bug: Bug,
+  Newspaper: Newspaper,
+};
+
+
+function NewsAndAlertsCard() {
+    const { toast } = useToast();
+    const [isPending, startTransition] = useTransition();
+    const [data, setData] = useState<GetWeatherAlertsOutput | null>(null);
+
+    useEffect(() => {
+        startTransition(async () => {
+        const { result, error } = await getWeatherAlertsAction({ location: "Guwahati, Assam" });
+        if (error) {
+            toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not load AI News & Alerts.",
+            });
+        } else {
+            setData(result);
+        }
+        });
+    }, [toast]);
+
+    const displayedAlerts = data?.alerts.slice(0, 3) || [];
+
+    return (
+        <Card className="col-span-4">
+            <CardHeader>
+                <CardTitle className="font-headline">AI News & Alerts</CardTitle>
+                <CardDescription>Timely updates on weather, subsidies, and pests in your area.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                {isPending && (
+                    <div className="flex items-center justify-center h-40">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                )}
+                <div className="space-y-4">
+                    {displayedAlerts.map((alert, index) => {
+                        const Icon = iconMap[alert.icon as string] || Bell;
+                        return (
+                            <div key={index} className="flex items-start space-x-4">
+                                <Avatar className={`h-9 w-9 border ${alert.color.replace('text-', 'border-')}`}>
+                                    <AvatarFallback className="bg-transparent">
+                                      <Icon className={`h-4 w-4 ${alert.color}`} />
+                                    </AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1 space-y-1">
+                                    <p className="text-sm font-medium leading-none">{alert.title}</p>
+                                    <p className="text-sm text-muted-foreground line-clamp-2">{alert.description}</p>
+                                    <p className="text-xs text-muted-foreground">{alert.time}</p>
+                                </div>
+                            </div>
+                        )
+                    })}
+                     {!isPending && (
+                         <Button variant="outline" className="w-full" asChild>
+                            <Link href="/alerts">View All Alerts</Link>
+                        </Button>
+                     )}
+                </div>
+            </CardContent>
+        </Card>
+    )
+}
 
 
 export default function DashboardPage() {
@@ -146,36 +208,8 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="col-span-4">
-          <CardHeader>
-            <CardTitle className="font-headline">Mood & Stress Tracker</CardTitle>
-            <CardDescription>Your stress level over the past week.</CardDescription>
-          </CardHeader>
-          <CardContent className="pl-2">
-            <ChartContainer config={moodChartConfig} className="h-[300px] w-full">
-              <RechartsBarChart data={moodData} accessibilityLayer>
-                <CartesianGrid vertical={false} />
-                <XAxis
-                  dataKey="day"
-                  tickLine={false}
-                  tickMargin={10}
-                  axisLine={false}
-                />
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  tickMargin={10}
-                  domain={[0, 10]}
-                />
-                <ChartTooltip
-                  cursor={false}
-                  content={<ChartTooltipContent indicator="line" />}
-                />
-                <Bar dataKey="level" fill="var(--color-level)" radius={8} />
-              </RechartsBarChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
+        <NewsAndAlertsCard />
+
         <Card className="col-span-4 md:col-span-3">
           <CardHeader>
             <CardTitle className="font-headline">Soil Quality</CardTitle>
@@ -197,7 +231,7 @@ export default function DashboardPage() {
                   </div>
               </div>
               <div className="flex items-center space-x-4 rounded-md border p-4">
-                  <BarChart />
+                  <HeartPulse />
                   <div className="flex-1 space-y-1">
                       <p className="text-sm font-medium leading-none">Phosphorus (P)</p>
                       <p className="text-sm text-muted-foreground">25 kg/ha (Sufficient)</p>
@@ -241,37 +275,6 @@ export default function DashboardPage() {
               </RechartsPieChart>
             </ChartContainer>
           </CardContent>
-        </Card>
-         <Card className="col-span-4">
-            <CardHeader>
-                <CardTitle className="font-headline">Recent Notifications</CardTitle>
-                <CardDescription>Updates on your farm and government schemes.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <div className="space-y-4">
-                    <div className="flex items-start space-x-4">
-                        <Avatar className="h-9 w-9">
-                            <AvatarImage src="https://placehold.co/100x100.png" alt="Avatar" data-ai-hint="government building" />
-                            <AvatarFallback>GOV</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 space-y-1">
-                            <p className="text-sm font-medium leading-none">PM-Kisan: eKYC Update Required</p>
-                            <p className="text-sm text-muted-foreground">Please update your eKYC by July 31st to continue receiving benefits.</p>
-                            <p className="text-xs text-muted-foreground">2 days ago</p>
-                        </div>
-                    </div>
-                     <div className="flex items-start space-x-4">
-                        <Avatar className="h-9 w-9">
-                            <Bell className="h-full w-full p-2 text-primary" />
-                        </Avatar>
-                        <div className="flex-1 space-y-1">
-                            <p className="text-sm font-medium leading-none">Pest Alert: Rice Stem Borer</p>
-                            <p className="text-sm text-muted-foreground">Increased activity detected in your region. Monitor your paddy fields closely.</p>
-                             <p className="text-xs text-muted-foreground">4 days ago</p>
-                        </div>
-                    </div>
-                </div>
-            </CardContent>
         </Card>
       </div>
     </div>

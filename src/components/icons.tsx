@@ -1,5 +1,7 @@
 import { cn } from "@/lib/utils";
 import Image from "next/image";
+import { Bug, Newspaper } from "lucide-react";
+
 
 export function Logo(props: React.HTMLAttributes<HTMLDivElement>) {
   return (
@@ -46,3 +48,5 @@ export function CowIcon(props: React.SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+
+export { Bug, Newspaper };
