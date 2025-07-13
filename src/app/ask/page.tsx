@@ -76,16 +76,18 @@ export default function AskPage() {
   const handleMicClick = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      return; // Error toast already shown in useEffect
+      // Error toast already shown in useEffect, so we can just return.
+      return;
     }
 
-    if (isRecording) {
-      recognitionRef.current?.stop();
+    if (recognitionRef.current && isRecording) {
+      recognitionRef.current.stop();
       setIsRecording(false);
+      recognitionRef.current = null;
       return;
     }
     
-    // Create a new recognition instance for each recording to ensure language is set correctly
+    // Always create a new instance to ensure the correct language is used.
     const recognition = new SpeechRecognition();
     recognition.lang = languageMap[language];
     recognition.continuous = false;
@@ -180,10 +182,10 @@ export default function AskPage() {
                   className="absolute bottom-2 right-2 rounded-full"
                   onClick={handleMicClick}
                   disabled={isPending}
-                  title="Record Voice"
+                  title={isRecording ? "Stop Recording" : "Record Voice"}
                 >
                   <Mic className="h-4 w-4" />
-                  <span className="sr-only">Record Voice</span>
+                  <span className="sr-only">{isRecording ? "Stop Recording" : "Record Voice"}</span>
                 </Button>
               </div>
             </div>
