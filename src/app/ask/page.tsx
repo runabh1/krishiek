@@ -37,6 +37,11 @@ export default function AskPage() {
   const [isSpeechRecognitionSupported, setIsSpeechRecognitionSupported] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    setIsSpeechRecognitionSupported(!!SpeechRecognition);
+  }, []);
+
   const submitQuery = (currentQuery: string) => {
     if (!currentQuery) {
       toast({
@@ -62,50 +67,6 @@ export default function AskPage() {
     });
   }
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        setIsSpeechRecognitionSupported(true);
-        recognitionRef.current = new SpeechRecognition();
-      } else {
-        setIsSpeechRecognitionSupported(false);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    const recognition = recognitionRef.current;
-    if (!recognition) return;
-
-    recognition.lang = languageMap[language] || "en-US";
-    recognition.continuous = false;
-    recognition.interimResults = false;
-
-    recognition.onstart = () => setIsRecording(true);
-    recognition.onend = () => setIsRecording(false);
-    
-    recognition.onerror = (event) => {
-      console.error("Speech Recognition Error:", event.error);
-      toast({
-        variant: "destructive",
-        title: "Speech Recognition Error",
-        description: event.error === "no-speech" 
-          ? "No speech was detected. Please try again."
-          : event.error,
-      });
-      setIsRecording(false);
-    };
-
-    recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript;
-      setQuery(transcript);
-      submitQuery(transcript);
-    };
-
-  }, [language, toast]);
-
-
   const handleMicClick = () => {
     if (!isSpeechRecognitionSupported) {
       toast({
@@ -115,22 +76,58 @@ export default function AskPage() {
       });
       return;
     }
-
+  
     if (isRecording) {
       recognitionRef.current?.stop();
-    } else {
+      setIsRecording(false);
+      return;
+    }
+  
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognitionRef.current = recognition;
+  
+    recognition.lang = languageMap[language] || "en-US";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+  
+    recognition.onstart = () => {
+      setIsRecording(true);
       setQuery("");
       setResult(null);
-      try {
-        recognitionRef.current?.start();
-      } catch (e) {
-        console.error("Could not start recognition:", e);
-        toast({
-          variant: "destructive",
-          title: "Recognition Error",
-          description: "Could not start speech recognition. Please check your microphone permissions.",
-        })
-      }
+    };
+  
+    recognition.onend = () => {
+      setIsRecording(false);
+    };
+  
+    recognition.onerror = (event) => {
+      console.error("Speech Recognition Error:", event.error);
+      toast({
+        variant: "destructive",
+        title: "Speech Recognition Error",
+        description: event.error === "no-speech" 
+          ? "No speech was detected. Please try again."
+          : `An error occurred: ${event.error}`,
+      });
+      setIsRecording(false);
+    };
+  
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      setQuery(transcript);
+      submitQuery(transcript);
+    };
+  
+    try {
+      recognition.start();
+    } catch (e) {
+      console.error("Could not start recognition:", e);
+      toast({
+        variant: "destructive",
+        title: "Recognition Error",
+        description: "Could not start speech recognition. Please check your microphone permissions.",
+      });
     }
   };
 
@@ -154,7 +151,7 @@ export default function AskPage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="language">Select Language</Label>
-              <Select value={language} onValueChange={setLanguage}>
+              <Select value={language} onValueChange={setLanguage} disabled={isRecording}>
                 <SelectTrigger id="language" className="w-[180px]">
                   <SelectValue placeholder="Language" />
                 </SelectTrigger>
