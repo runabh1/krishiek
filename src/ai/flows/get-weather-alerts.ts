@@ -215,5 +215,3 @@ const getWeatherAlertsFlow = ai.defineFlow(
     return output;
   }
 );
-
-    
