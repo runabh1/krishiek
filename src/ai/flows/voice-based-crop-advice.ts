@@ -30,14 +30,14 @@ const prompt = ai.definePrompt({
   name: 'cropAdvicePrompt',
   input: {schema: GetCropAdviceInputSchema},
   output: {schema: GetCropAdviceOutputSchema},
-  prompt: `You are an agricultural expert providing crop advice to farmers.
-  The farmer will provide a voice query in their native language, and you should respond with relevant advice in the same language.
+  prompt: `You are an agricultural expert providing crop advice to farmers in India.
+  A farmer has a question in their native language. Your task is to provide a clear, actionable answer in that same language.
 
-  Language: {{{language}}}
-  Query: {{{voiceQuery}}}
+  Language for Response: {{{language}}}
+  Farmer's Query: {{{voiceQuery}}}
 
-  Provide specific and actionable advice based on the query, considering local farming practices.
-  Return the advice in user's native language.
+  Analyze the query and provide specific advice. For example, if the query is "मेरे धान के खेत में कीट लग गए हैं, क्या करूँ?", your response should be in Hindi with concrete steps.
+  Return only the advice in the specified language.
   `,
 });
 

@@ -29,14 +29,15 @@ const prompt = ai.definePrompt({
   name: 'cattleAdvicePrompt',
   input: {schema: GetCattleAdviceInputSchema},
   output: {schema: GetCattleAdviceOutputSchema},
-  prompt: `You are a veterinary expert specializing in livestock, particularly cattle.
-  A farmer has a question about their cattle. Provide clear, actionable advice in their native language.
+  prompt: `You are a veterinary expert specializing in livestock, particularly cattle, in the Indian context.
+  A farmer has a question about their cattle. Provide a clear, actionable answer in their specified native language.
 
-  Language: {{{language}}}
-  Query: {{{query}}}
+  Language for Response: {{{language}}}
+  Farmer's Query: {{{query}}}
 
   Provide specific and actionable advice based on the query, covering health, nutrition, or breeding.
-  Return the advice in the user's native language.
+  For example, if the query is in Hindi, the response must also be in Hindi.
+  Return only the advice in the user's native language.
   `,
 });
 
