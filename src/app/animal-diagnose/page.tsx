@@ -28,7 +28,7 @@ export default function AnimalDiagnosePage() {
       startTransition(async () => {
         const { diagnosis, error } = await diagnoseAnimalDiseaseAction({
           photoDataUri: dataUri,
-          nativeLanguage: "English", // This could be dynamic based on user settings
+          nativeLanguage: "Assamese", // This could be dynamic based on user settings
         });
 
         if (error) {
@@ -99,7 +99,7 @@ export default function AnimalDiagnosePage() {
                       <div className="flex items-start gap-3">
                         <BarChart className="h-5 w-5 mt-1 text-muted-foreground" />
                         <div>
-                            <h5 className="font-semibold">Treatment Steps</h5>
+                            <h5 className="font-semibold">Treatment Steps (in Assamese)</h5>
                             <p className="text-sm text-muted-foreground">{result.stepsToFix}</p>
                         </div>
                       </div>
