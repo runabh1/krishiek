@@ -78,7 +78,15 @@ export default function AskPage() {
     startTransition(async () => {
       const { transcript, advice, error } = await getAdviceFromAudioAction({ audioDataUri, language });
       if (error) {
-        toast({ variant: "destructive", title: "Error", description: error });
+        if (error.includes("Quota") || error.includes("429")) {
+             toast({ 
+                variant: "destructive", 
+                title: "Usage Limit Reached",
+                description: "You've made too many requests in a short time. Please wait a minute and try again."
+            });
+        } else {
+            toast({ variant: "destructive", title: "Error", description: error });
+        }
       } else if (transcript && advice) {
         setResult({ transcript, advice });
       }
