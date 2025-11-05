@@ -3,9 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  BarChart3,
   Bell,
-  FileText,
   HeartPulse,
   LayoutDashboard,
   Leaf,
@@ -29,10 +27,8 @@ const links = [
   { href: "/animal-diagnose", label: "Diagnose Animal", icon: HeartPulse },
   { href: "/cattle-help", label: "Cattle Help", icon: CowIcon },
   { href: "/mandi-prices", label: "Mandi Prices", icon: LineChart },
-  { href: "/forms", label: "Voice Form Filler", icon: FileText },
   { href: "/marketplace", label: "Marketplace", icon: Store },
   { href: "/alerts", label: "Alerts & Forecast", icon: Bell },
-  { href: "/reports", label: "Generate Reports", icon: BarChart3 },
 ];
 
 export function MainNav() {

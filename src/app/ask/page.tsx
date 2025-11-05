@@ -11,9 +11,10 @@ import { getAdviceFromAudioAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
+// Simplified state to only handle text
 interface ResultState {
-  transcript: string;
-  advice: string;
+  transcript: string | null;
+  advice: string | null;
 }
 
 export default function AskPage() {
@@ -25,6 +26,8 @@ export default function AskPage() {
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+
+  // Removed all state and effects related to audio playback
 
   const handleMicClick = async () => {
     if (isRecording) {
@@ -58,7 +61,7 @@ export default function AskPage() {
 
       mediaRecorder.start();
       setIsRecording(true);
-      setResult(null);
+      setResult(null); // Clear previous results
 
     } catch (err) {
       console.error("Error accessing microphone:", err);
@@ -76,6 +79,7 @@ export default function AskPage() {
 
   const submitAudioQuery = (audioDataUri: string) => {
     startTransition(async () => {
+      // The action now only returns text and an error
       const { transcript, advice, error } = await getAdviceFromAudioAction({ audioDataUri, language });
       if (error) {
         if (error.includes("Quota") || error.includes("429")) {
@@ -87,8 +91,9 @@ export default function AskPage() {
         } else {
             toast({ variant: "destructive", title: "Error", description: error });
         }
+        setResult(null);
       } else if (transcript && advice) {
-        setResult({ transcript, advice });
+        setResult({ transcript, advice }); // Set the simplified text-only result
       }
     });
   };
@@ -148,24 +153,31 @@ export default function AskPage() {
               {result && (
                 <div className="space-y-4">
                     <h3 className="text-lg font-semibold font-headline mb-4">Conversation</h3>
-                    <div className="flex items-start gap-4">
-                        <Avatar className="w-8 h-8 border">
-                            <AvatarFallback><User className="h-4 w-4"/></AvatarFallback>
-                        </Avatar>
-                        <div className="bg-muted rounded-lg p-3 flex-1">
-                            <p className="font-semibold text-sm">You asked:</p>
-                            <p className="text-muted-foreground italic">"{result.transcript}"</p>
+                    {result.transcript && (
+                        <div className="flex items-start gap-4">
+                            <Avatar className="w-8 h-8 border">
+                                <AvatarFallback><User className="h-4 w-4"/></AvatarFallback>
+                            </Avatar>
+                            <div className="bg-muted rounded-lg p-3 flex-1">
+                                <p className="font-semibold text-sm">You asked:</p>
+                                <p className="text-muted-foreground italic">"{result.transcript}"</p>
+                            </div>
                         </div>
-                    </div>
-                    <div className="flex items-start gap-4">
-                        <Avatar className="w-8 h-8 border bg-primary text-primary-foreground">
-                            <AvatarFallback><Bot className="h-4 w-4"/></AvatarFallback>
-                        </Avatar>
-                        <div className="bg-primary/10 rounded-lg p-3 flex-1">
-                            <p className="font-semibold text-sm text-primary">KrishiGPT replied:</p>
-                            <p className="whitespace-pre-wrap">{result.advice}</p>
+                    )}
+                    {result.advice && (
+                        <div className="flex items-start gap-4">
+                            <Avatar className="w-8 h-8 border bg-primary text-primary-foreground">
+                                <AvatarFallback><Bot className="h-4 w-4"/></AvatarFallback>
+                            </Avatar>
+                            <div className="bg-primary/10 rounded-lg p-3 flex-1">
+                               <div className="flex justify-between items-center mb-2">
+                                    <p className="font-semibold text-sm text-primary">KrishiGPT replied:</p>
+                                    {/* Audio playback controls are now completely removed */}
+                                </div>
+                                <p className="whitespace-pre-wrap">{result.advice}</p>
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </div>
               )}
             </div>
