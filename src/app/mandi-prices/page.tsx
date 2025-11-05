@@ -20,9 +20,6 @@ interface MandiPrice {
     arrival_date: string;
 }
 
-const API_KEY = "579b464db66ec23bdd000001857093021f5041a25572411fe89dcd3d";
-const API_URL = `https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070?api-key=${API_KEY}&format=json&offset=0&limit=1000`;
-
 export default function MandiPricesPage() {
   const [prices, setPrices] = useState<MandiPrice[]>([]);
   const [filteredPrices, setFilteredPrices] = useState<MandiPrice[]>([]);
@@ -33,6 +30,14 @@ export default function MandiPricesPage() {
 
   useEffect(() => {
     const fetchPrices = async () => {
+        const API_KEY = process.env.NEXT_PUBLIC_DATA_GOV_API_KEY;
+        if (!API_KEY) {
+            setError("The API key is missing. Please configure the NEXT_PUBLIC_DATA_GOV_API_KEY environment variable.");
+            setLoading(false);
+            return;
+        }
+        const API_URL = `https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070?api-key=${API_KEY}&format=json&offset=0&limit=1000`;
+
         try {
             const response = await axios.get(API_URL);
             if (response.data && response.data.records) {
